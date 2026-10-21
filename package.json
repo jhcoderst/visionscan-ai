@@ -1,23 +1,33 @@
 {
   "name": "visionscan-ai",
   "version": "1.0.0",
+  "private": true,
   "description": "VisionScan AI: análisis visual con cámara, subida de imágenes y Gemini API",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "build": "echo 'No build step required for static web app'",
+    "android:sync": "npx cap sync android",
+    "android:open": "npx cap open android",
+    "android:run": "npx cap run android",
+    "android:build": "npx cap copy android && cd android && ./gradlew assembleDebug"
   },
   "keywords": [
     "vision",
     "gemini",
     "ai",
     "camera",
-    "opencv",
-    "webapp"
+    "webapp",
+    "android",
+    "capacitor"
   ],
   "author": "jhcoderst",
   "license": "MIT",
   "dependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/cli": "^6.2.0",
+    "@capacitor/core": "^6.2.0",
     "dotenv": "^16.4.5",
     "express": "^4.19.2"
   }
