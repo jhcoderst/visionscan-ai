@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VisionScan AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              cyan: { 400: '#22d3ee', 500: '#06b6d4', 600: '#0891b2' },
+              violet: { 500: '#8b5cf6', 600: '#7c3aed' }
+            },
+            animation: {
+              'scan-line': 'scan 2.5s ease-in-out infinite',
+              'pulse-glow': 'pulseGlow 2s infinite',
+              float: 'float 4s ease-in-out infinite'
+            },
+            keyframes: {
+              scan: {
+                '0%, 100%': { top: '0%' },
+                '50%': { top: '100%' }
+              },
+              pulseGlow: {
+                '0%, 100%': { opacity: '0.4', filter: 'drop-shadow(0 0 15px rgba(6, 182, 212, 0.6))' },
+                '50%': { opacity: '0.9', filter: 'drop-shadow(0 0 25px rgba(139, 92, 246, 0.8))' }
+              },
+              float: {
+                '0%, 100%': { transform: 'translateY(0px)' },
+                '50%': { transform: 'translateY(-6px)' }
+              }
+            }
+          }
+        }
+      };
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="min-h-screen flex flex-col justify-between selection:bg-cyan-500 selection:text-white">
+    <header class="sticky top-0 z-40 glass-panel border-b border-gray-800/80 px-4 py-3 md:px-8">
+      <div class="max-w-7xl mx-auto flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <div class="p-2.5 bg-gradient-to-tr from-cyan-500 to-violet-600 rounded-xl shadow-lg shadow-cyan-500/20 text-white">
+            <i class="fa-solid fa-eye text-xl animate-pulse"></i>
+          </div>
+          <div>
+            <h1 class="text-xl font-bold bg-gradient-to-r from-cyan-400 via-teal-300 to-violet-400 bg-clip-text text-transparent">
+              VisionScan <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 ml-1">IA</span>
+            </h1>
+            <p class="text-xs text-gray-400 hidden sm:block">Detección y análisis inteligente en tiempo real</p>
+          </div>
+        </div>
+
+        <div class="flex items-center space-x-3">
+          <button id="toggleAutoBtn" class="px-3 py-1.5 rounded-xl text-xs font-medium border border-gray-700 bg-gray-800/50 hover:bg-gray-700 text-gray-300 transition-all flex items-center gap-2">
+            <span id="autoIndicator" class="w-2 h-2 rounded-full bg-gray-500"></span>
+            <span id="autoBtnText">Auto-Escaneo: OFF</span>
+          </button>
+          <button id="clearHistoryBtn" class="p-2 text-gray-400 hover:text-red-400 transition-colors text-sm rounded-lg hover:bg-gray-800/50" title="Borrar Historial">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <section class="lg:col-span-7 flex flex-col gap-4">
+        <div id="cameraContainer" class="relative rounded-3xl overflow-hidden glass-panel border border-cyan-500/20 shadow-2xl aspect-[4/3] md:aspect-[16/10] flex items-center justify-center group">
+          <video id="webcam" autoplay playsinline muted class="w-full h-full object-cover rounded-3xl transform scale-x-100 transition-all duration-300"></video>
+          <canvas id="snapshotCanvas" class="hidden"></canvas>
+
+          <div id="hudOverlay" class="absolute inset-0 pointer-events-none">
+            <div class="reticle-corner top-left"></div>
+            <div class="reticle-corner top-right"></div>
+            <div class="reticle-corner bottom-left"></div>
+            <div class="reticle-corner bottom-right"></div>
+            <div id="scanLine" class="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_15px_#22d3ee] animate-scan-line hidden"></div>
+
+            <div class="absolute inset-0 flex items-center justify-center opacity-30">
+              <div class="w-12 h-12 border border-cyan-400/50 rounded-full flex items-center justify-center">
+                <div class="w-1.5 h-1.5 bg-cyan-400 rounded-full"></div>
+              </div>
+            </div>
+
+            <div class="absolute top-4 left-4 right-4 flex justify-between items-center px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md text-xs border border-white/10">
+              <span class="flex items-center gap-2 text-cyan-400 font-mono">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                CAM: <span id="camStatusText">ACTIVA</span>
+              </span>
+              <span id="resolutionText" class="text-gray-400 font-mono">1080p AI Ready</span>
+            </div>
+          </div>
+
+          <div id="loadingOverlay" class="absolute inset-0 bg-gray-950/80 backdrop-blur-md flex flex-col items-center justify-center gap-4 transition-opacity duration-300 opacity-0 pointer-events-none z-20">
+            <div class="relative flex items-center justify-center">
+              <div class="w-20 h-20 rounded-full border-4 border-cyan-500/20 border-t-cyan-400 animate-spin"></div>
+              <div class="w-12 h-12 rounded-full border-4 border-violet-500/20 border-b-violet-400 animate-spin absolute" style="animation-direction: reverse; animation-duration: 1.5s;"></div>
+              <i class="fa-solid fa-brain text-cyan-400 text-xl animate-bounce"></i>
+            </div>
+            <div class="text-center">
+              <p class="text-lg font-semibold text-cyan-300 animate-pulse">Analizando visión inteligente...</p>
+              <p class="text-xs text-gray-400 mt-1">Sintetizando elementos y detalles con IA</p>
+            </div>
+          </div>
+
+          <div id="cameraErrorView" class="absolute inset-0 bg-gray-900 flex flex-col items-center justify-center p-6 text-center hidden z-30">
+            <div class="p-4 bg-red-500/10 text-red-400 rounded-2xl mb-3 border border-red-500/20">
+              <i class="fa-solid fa-camera-rotate text-3xl"></i>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-1">Cámara no accesible</h3>
+            <p id="errorMessage" class="text-sm text-gray-400 max-w-sm mb-4">Por favor permite el acceso a la cámara o selecciona un archivo de imagen.</p>
+            <button id="retryCameraBtn" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-sm rounded-xl transition-all shadow-lg shadow-cyan-600/30">
+              <i class="fa-solid fa-rotate-right mr-2"></i>Reintentar
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between gap-3 p-3 glass-panel rounded-2xl border border-gray-800">
+          <button id="switchCamBtn" class="p-3 bg-gray-800/80 hover:bg-gray-700 text-gray-200 rounded-xl border border-gray-700 transition-all flex items-center justify-center gap-2 text-sm font-medium" title="Cambiar Cámara">
+            <i class="fa-solid fa-camera-rotate text-cyan-400"></i>
+            <span class="hidden sm:inline">Cambiar Cámara</span>
+          </button>
+
+          <button id="scanBtn" class="flex-1 max-w-xs py-3.5 px-6 bg-gradient-to-r from-cyan-500 via-teal-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white font-bold rounded-2xl shadow-lg shadow-cyan-500/25 transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-base">
+            <i class="fa-solid fa-bolt text-lg"></i>
+            <span>ESCANEAR AHORA</span>
+          </button>
+
+          <label class="p-3 bg-gray-800/80 hover:bg-gray-700 text-gray-200 rounded-xl border border-gray-700 transition-all flex items-center justify-center gap-2 text-sm font-medium cursor-pointer" title="Subir Imagen">
+            <i class="fa-solid fa-upload text-violet-400"></i>
+            <span class="hidden sm:inline">Subir Foto</span>
+            <input type="file" id="fileInput" accept="image/*" class="hidden" />
+          </label>
+        </div>
+      </section>
+
+      <section class="lg:col-span-5 flex flex-col gap-4">
+        <div class="glass-panel rounded-3xl p-5 border border-cyan-500/20 flex-1 flex flex-col justify-between min-h-[380px]">
+          <div id="resultPlaceholder" class="flex-1 flex flex-col items-center justify-center text-center p-6 text-gray-500">
+            <div class="w-16 h-16 rounded-2xl bg-gray-800/50 border border-gray-700 flex items-center justify-center text-cyan-400 mb-4 animate-float">
+              <i class="fa-solid fa-microscope text-2xl"></i>
+            </div>
+            <h3 class="text-lg font-bold text-gray-300">Esperando captura</h3>
+            <p class="text-xs text-gray-400 mt-2 max-w-xs">Apunta la cámara a un objeto y pulsa "Escanear Ahora" para recibir un desglose detallado.</p>
+          </div>
+
+          <div id="resultContent" class="hidden flex-1 flex-col gap-4 animate-fade-in">
+            <div class="flex items-start justify-between border-b border-gray-800 pb-3">
+              <div>
+                <span id="resCategory" class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-violet-500/10 text-violet-300 border border-violet-500/30">
+                  CATEGORÍA
+                </span>
+                <h2 id="resTitle" class="text-2xl font-black text-white mt-1.5 bg-gradient-to-r from-white via-cyan-100 to-gray-300 bg-clip-text text-transparent">
+                  Objeto Detectado
+                </h2>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] text-gray-400 uppercase font-semibold block">Confianza</span>
+                <span id="resConfidence" class="text-sm font-bold text-cyan-400 font-mono">98%</span>
+              </div>
+            </div>
+
+            <div>
+              <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Descripción</h4>
+              <p id="resDescription" class="text-sm text-gray-300 leading-relaxed font-normal">
+                Descripción analítica detallada proporcionada por la IA...
+              </p>
+            </div>
+
+            <div class="p-3.5 bg-gradient-to-r from-cyan-950/40 to-violet-950/40 rounded-2xl border border-cyan-500/20 relative overflow-hidden">
+              <div class="flex items-start gap-3">
+                <i class="fa-solid fa-lightbulb text-amber-400 text-lg mt-0.5"></i>
+                <div>
+                  <h4 class="text-xs font-bold text-amber-300 uppercase tracking-wider">Dato Curioso</h4>
+                  <p id="resFunFact" class="text-xs text-gray-300 mt-0.5 leading-normal">
+                    Información de interés científico o cultural.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Otros elementos visibles</h4>
+              <div id="resTags" class="flex flex-wrap gap-1.5"></div>
+            </div>
+
+            <div class="pt-2 border-t border-gray-800 flex justify-end">
+              <button id="speakBtn" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-cyan-400 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-colors border border-gray-700">
+                <i class="fa-solid fa-volume-high"></i> Escuchar Análisis
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between px-1">
+          <h3 class="text-sm font-bold text-gray-300 flex items-center gap-2">
+            <i class="fa-solid fa-clock-rotate-left text-cyan-400"></i> Detecciones Recientes
+          </h3>
+          <span id="historyCount" class="text-xs text-gray-500 font-mono">0 guardados</span>
+        </div>
+
+        <div id="historyContainer" class="flex gap-3 overflow-x-auto pb-2 pt-1 snap-x">
+          <div id="emptyHistoryText" class="text-xs text-gray-500 py-4 w-full text-center">
+            No hay escaneos recientes guardados.
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="glass-panel border-t border-gray-800/80 py-3 px-4 text-center text-xs text-gray-500">
+      <p>VisionScan IA &copy; 2026 - Potenciado por Gemini API. Diseñado para análisis visual inteligente.</p>
+    </footer>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

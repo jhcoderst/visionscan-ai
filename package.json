@@ -1,0 +1,24 @@
+{
+  "name": "visionscan-ai",
+  "version": "1.0.0",
+  "description": "VisionScan AI: análisis visual con cámara, subida de imágenes y Gemini API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "vision",
+    "gemini",
+    "ai",
+    "camera",
+    "opencv",
+    "webapp"
+  ],
+  "author": "jhcoderst",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
+}
